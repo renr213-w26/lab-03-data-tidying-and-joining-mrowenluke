@@ -2,8 +2,8 @@
 title: "Lab 3 - Data tidying and joining"
 author: "Luke Owen"
 format:
-  html: default
   pdf: default
+  html: default
   
 categories: "Lab"
 ---
@@ -171,7 +171,6 @@ inflation_selected <- inflation_long |>
   distinct(country)
 ```
 
-
 ### Question 7
 
 Using your data frame from the previous question, create a plot of annual inflation vs. year for these countries. Then, in a few sentences, describe the patterns you observe in the plot, particularly focusing on anything you find surprising or not surprising, based on your knowledge (or lack thereof) of these countries economies.
@@ -205,16 +204,6 @@ The plot shows that inflation rates for the selected countries are generally fai
 
 **Inflation in the US**
 
-The OECD defines inflation as follows:
-
-> Inflation is a rise in the general level of prices of goods and services that households acquire for the purpose of consumption in an economy over a period of time.
->
-> The main measure of inflation is the annual inflation rate which is the movement of the Consumer Price Index (CPI) from one month/period to the same month/period of the previous year expressed as percentage over time.
->
-> Source: [OECD CPI FAQ](https://www.oecd.org/sdd/prices-ppp/consumerpriceindices-frequentlyaskedquestionsfaqs.htm#1)
-
-CPI is broken down into 12 divisions such as food, housing, health, etc. Your goal in this part is to create another time series plot of annual inflation, this time for US only.
-
 The data you will need to create this visualization is spread across two files:
 
 -   `us-inflation.csv`: Annual inflation rate for the US for 12 CPI divisions. Each division is identified by an ID number.
@@ -227,102 +216,98 @@ Let's load both of these files.
 #| message: false
 
 us_inflation <- read_csv("data/us-inflation.csv")
+write_csv(us_inflation, "us_inflation.csv")
 cpi_divisions <- read_csv("data/cpi-divisions.csv")
+write_csv(cpi_divisions, "cpi_divisions.csv")
 ```
 
 ### Question 8
 
 a\. How many columns and how many rows does the `us_inflation` dataset have? What are the variables in it? Add a brief (1-2 sentences) narrative summarizing this information.
 
+```{r}
+glimpse(us_inflation)
+```
+
+The us_inflation dataset contains 132 rows and 4 columns. The variables in the dataset are country, year, annual_inflation,  cpi_division_id.
+
 b\. How many columns and how many rows does the `cpi_divisions` dataset have? What are the variables in it? Add a brief (1-2 sentences) narrative summarizing this information.
+
+```{r}
+glimpse(cpi_divisions)
+```
+
+The cpi_division dataset contains 12 rows and 2 columns. The variables in the dataset are id and description.
 
 c\. Create a new dataset by joining the `us_inflation` dataset with the `cpi_division_id` dataset.
 
--   Determine which type of join is the most appropriate one and use that.
-
--   Note that the two datasets don't have a common variable. Review the help for the join functions to determine how to use the `by` argument when the names of the variables that the datasets should be joined by are different.
-
--   Use a short but informative name for the joined dataset, and do not overwrite either of the datasets that go into creating it.
+```{r}
+inflation_joined <- us_inflation |>
+  left_join(
+    cpi_divisions,
+    by = c("cpi_division_id" = "id")
+  )
+```
 
 Then, find the number of rows and columns of the resulting dataset and report the names of its columns. Add a brief (1-2 sentences) narrative summarizing this information.
 
+```{r}
+glimpse(inflation_joined)
+```
+The datasets were joined using a left join, which preserves all observations from the us_inflation dataset while adding the CPI division information from cpi_divisions. The resulting dataset contains 132 rows and 5 columns, and the variables are country, year, annual_inflation,cpi_division_id, and description.
+
 ### Question 9
 
-a\. Create a vector called `divisions_of_interest` which contains the descriptions or IDs of CPI divisions you want to visualize. Your `divisions_of_interest` should consist of no more than five divisions. If you're using descriptions, make sure that the spelling of your divisions matches how they appear in the dataset. Then, in 1-2 sentences, state why you chose these divisions.
+a\. Create a vector called `divisions_of_interest` which contains the descriptions or IDs of CPI divisions you want to visualize. 
 
-::: callout-tip
-Refer back to the guidance provided in [Question 6] if you're not sure how to create this vector.
-:::
+```{r}
+divisions_of_interest <- c(
+  "Food and non-Alcoholic beverages",
+  "Housing, water, electricity, gas and other fuels",
+  "Health",
+  "Transport",
+  "Education"
+)
+```
+
+I chose these CPI divisions because they represent major categories of household spending and are likely to show meaningful differences in inflation over time. They also include categories that people commonly notice in everyday life, such as food, housing, and transportation.
+
 
 b\. In a single pipeline, filter your reshaped dataset to include only the `divisions_of_interest` from part (a), and save the resulting data frame with a new name so you (1) can refer to this data frame later in your analysis and (2) do not overwrite the data frame you're starting with. Use a short but informative name. Then, in a new pipeline, find the `distinct()` divisions in the data frame you created.
+
+```{r}
+division_selected <- inflation_joined |>
+  filter(description %in% divisions_of_interest)
+
+division_selected |>
+  distinct(description)
+```
 
 ### Question 10
 
 Using your data frame from the previous question, create a plot of annual inflation vs. year for these divisions. Then, in a few sentences, describe the patterns you observe in the plot, particularly focusing on anything you find surprising or not surprising, based on your knowledge (or lack thereof) of inflation rates in the US over the last decade.
 
--   Data should be represented with points as well as lines connecting the points for each division.
--   Each division should be represented by a different color line and different color and shape points.
--   Axes and legend should be properly labeled.
--   The plot should have an appropriate title (and optionally a subtitle).
--   Plot should be customized in at least one way – you could use a different than default color scale, or different than default theme, or some other customization.
--   If your legend has labels that are too long, you can try moving the legend to the bottom and stack the labels vertically. *Hint:* The `legend.position` and `legend.direction` arguments of the `theme()` functions will be useful.
-
 ```{r}
-ggplot() +
-  theme(
-    legend.position = "bottom", 
-    legend.direction = "vertical"
+ggplot(
+  division_selected,
+  aes(
+    x = year,
+    y = annual_inflation,
+    color = description,
+    shape = description,
+    group = description
   )
+) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2) +
+  labs(
+    x = "Year",
+    y = "Annual inflation rate",
+    color = "CPI Division",
+    shape = "CPI Division",
+    title = "Annual inflation rates from 1993 to 2021"
+  ) +
+  theme_minimal()
+
 ```
 
-::: render-commit-push
-If you haven't yet done so since Part 1, now is a good time to render, commit, and push. Make sure that you commit and push all changed documents and your Git pane is completely empty before proceeding.
-:::
-
-# Wrap-up
-
-## Submission
-
-Once you are finished with the lab, you will submit your final PDF document to Canvas.
-
-::: callout-warning
-Before you wrap up the assignment, make sure all of your documents are updated on your GitHub repo. We will be checking these to make sure you have been practicing how to commit and push changes.
-
-You must turn in a PDF file to the Canvas page by the submission deadline to be considered "on time".
-:::
-
-To submit your assignment:
-
--   Go to <http://www.Canvas.com> and click *Log in* in the top right corner.
--   Click *School Credentials* $\rightarrow$ *Duke NetID* and log in using your NetID credentials.
--   Click on your *REN R 213* course.
--   Click on the assignment, and you'll be prompted to submit it.
--   Mark all the pages associated with question. All the pages of your lab should be associated with at least one question (i.e., should be "checked").
-
-::: callout-important
-## Checklist
-
-Make sure you have:
-
--   attempted all questions
--   rendered your Quarto document
--   committed and pushed everything to your GitHub repository such that the Git pane in RStudio is empty
--   uploaded your PDF to Canvas
--   selected pages associated with each question on Canvas
-:::
-
-## Grading
-
-The lab is graded out of a total of 36 points.
-
-You can earn up to 4 points on each question:
-
--   4: Response shows excellent understanding and addresses all or almost all of the rubric items.
-
--   3: Response shows good understanding and addresses most of the rubric items.
-
--   2: Response shows understanding and addresses a majority of the rubric items.
-
--   1: Response shows effort and misses many of the rubric items.
-
--   0: Response does not show sufficient effort or understanding and/or is largely incomplete.
